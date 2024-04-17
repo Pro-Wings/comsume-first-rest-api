@@ -1,5 +1,9 @@
 package com.prowings.myapp.config;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -8,12 +12,17 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.PropertySource;
+import org.springframework.http.client.BufferingClientHttpRequestFactory;
 import org.springframework.http.client.ClientHttpRequestFactory;
+import org.springframework.http.client.ClientHttpRequestInterceptor;
 import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.servlet.config.annotation.EnableWebMvc;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 import org.springframework.web.util.DefaultUriBuilderFactory;
+
+import com.prowings.myapp.interceptor.HeaderModificationInterceptor;
+import com.prowings.myapp.interceptor.RequestResponseLoggingInterceptor;
 
 import lombok.Getter;
 
@@ -43,9 +52,16 @@ public class MyWebConfig implements WebMvcConfigurer {
 	@Bean
 	public RestTemplate restTemplate() {
 //		return new RestTemplate();
-		RestTemplate restTemplate = new RestTemplate(clientHttpRequestFactory());
+		RestTemplate restTemplate = new RestTemplate(bufferingClientHttpRequestFactory());
 		restTemplate.setUriTemplateHandler(new DefaultUriBuilderFactory(url));
 		restTemplate.setErrorHandler(new MyRestTemplateResponseErrorHandler());
+//		restTemplate.setInterceptors(Collections.singletonList(new RequestResponseLoggingInterceptor()));
+		
+		List<ClientHttpRequestInterceptor> interceptors = new ArrayList<>();
+		interceptors.add(new RequestResponseLoggingInterceptor());
+		interceptors.add(new HeaderModificationInterceptor());
+		
+		restTemplate.setInterceptors(interceptors);
 		return restTemplate;
 	}
 
@@ -56,6 +72,12 @@ public class MyWebConfig implements WebMvcConfigurer {
 		clientHttpRequestFactory.setConnectTimeout(requestTimeout);
 		clientHttpRequestFactory.setReadTimeout(requestTimeout);
 		return clientHttpRequestFactory;
+	}
+
+	private BufferingClientHttpRequestFactory bufferingClientHttpRequestFactory() {
+
+		return new BufferingClientHttpRequestFactory(clientHttpRequestFactory());
+
 	}
 
 }
